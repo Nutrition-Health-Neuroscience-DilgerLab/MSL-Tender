@@ -94,6 +94,12 @@ config/secrets.json
 uploads/
 temp/
 
+# Photos (2GB+ - upload to Supabase Storage instead)
+photos/
+
+# Validation reports (can be regenerated)
+database/validation_reports/
+
 # Testing
 .coverage
 htmlcov/
