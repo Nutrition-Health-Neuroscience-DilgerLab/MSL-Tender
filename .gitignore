@@ -100,6 +100,9 @@ photos/
 # Study files (original Excel data - sensitive research data)
 study files/
 
+# Consolidated data files (contain sensitive research data)
+database/consolidated_data*.csv
+
 # Validation reports (can be regenerated)
 database/validation_reports/
 
