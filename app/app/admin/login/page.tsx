@@ -4,17 +4,26 @@ import { useState, FormEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
+// Disable static generation for this page
+export const dynamic = 'force-dynamic'
+
+type AdminCheck = {
+  email: string
+  is_active: boolean
+}
+
 export default function AdminLogin() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setMessage('')
+
+    const supabase = createClient()
 
     // Validate @illinois.edu domain client-side
     if (!email.endsWith('@illinois.edu')) {
@@ -29,7 +38,7 @@ export default function AdminLogin() {
         .from('admin_users')
         .select('email, is_active')
         .eq('email', email)
-        .single()
+        .single() as { data: AdminCheck | null, error: any }
 
       if (checkError || !adminUser) {
         setMessage('This email is not authorized. Please contact an administrator.')

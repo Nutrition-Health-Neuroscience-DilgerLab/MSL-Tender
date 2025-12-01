@@ -12,7 +12,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -98,6 +97,13 @@ temp/
 photos/
 photos_staged_for_upload/
 photos_archive_no_db_record/
+
+# Reference codebase (not needed in version control)
+Tender_v01023/
+
+# Protocol documents (internal lab documentation)
+*.docx
+UI*.docx
 
 # Study files (original Excel data - sensitive research data)
 study files/
