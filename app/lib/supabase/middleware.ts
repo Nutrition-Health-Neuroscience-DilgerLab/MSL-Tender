@@ -35,6 +35,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Skip admin checks for auth callback route
+  if (request.nextUrl.pathname === '/auth/callback') {
+    return supabaseResponse
+  }
+
   // Protected admin routes
   if (request.nextUrl.pathname.startsWith('/admin') && 
       !request.nextUrl.pathname.startsWith('/admin/login')) {
