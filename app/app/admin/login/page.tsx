@@ -40,7 +40,15 @@ export default function AdminLogin() {
         .eq('email', email)
         .single() as { data: AdminCheck | null, error: any }
 
-      if (checkError || !adminUser) {
+      if (checkError) {
+        console.error('Whitelist check error:', checkError)
+        setMessage(`Error checking whitelist: ${checkError.message || 'Unknown error'}`)
+        setLoading(false)
+        return
+      }
+
+      if (!adminUser) {
+        console.log('No admin user found for:', email)
         setMessage('This email is not authorized. Please contact an administrator.')
         setLoading(false)
         return
