@@ -15,7 +15,7 @@ SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
 # R2 configuration
-R2_PUBLIC_URL = "https://pub-54fd27572f2e4efc8433722bee98239e0.r2.dev"
+R2_PUBLIC_URL = "https://pub-54fd27572f2e4efc843722bee98239e0.r2.dev"
 
 # Local images directory to get filenames
 IMAGES_DIR = Path("photos_staged_for_upload")
