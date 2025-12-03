@@ -57,6 +57,8 @@ export default function AdminLogin() {
           return
         }
 
+        console.log('[Password Login] Attempting login for:', email)
+
         // Sign in with password
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -64,14 +66,32 @@ export default function AdminLogin() {
         })
 
         if (error) {
-          console.error('Password login error:', error)
+          console.error('[Password Login] Error:', error)
           setMessage('Invalid email or password')
           setLoading(false)
           return
         }
 
-        console.log('Password login successful, redirecting...')
-        router.push('/admin/dashboard')
+        console.log('[Password Login] Success! User:', data.user?.email)
+        console.log('[Password Login] Session:', data.session ? 'Present' : 'Missing')
+        
+        // Check admin_users table
+        const { data: adminUser, error: adminError } = await supabase
+          .from('admin_users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+        
+        console.log('[Password Login] Admin user check:', adminUser ? 'Found' : 'Not found', adminError)
+        
+        if (!adminUser) {
+          setMessage('User authenticated but not in admin whitelist. Please contact administrator.')
+          setLoading(false)
+          return
+        }
+
+        console.log('[Password Login] All checks passed, redirecting to dashboard...')
+        window.location.href = '/admin/dashboard'
         return
       }
 
