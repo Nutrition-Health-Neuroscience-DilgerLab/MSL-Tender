@@ -16,7 +16,7 @@ export default function AdminLogin() {
       const error = params.get('error')
       const errorDescription = params.get('error_description')
       console.error('Auth error from URL:', error, errorDescription)
-      setMessage(Authentication error: )
+      setMessage(`Authentication error: ${errorDescription || error}`)
       window.history.replaceState(null, '', window.location.pathname)
     }
   }, [])
@@ -88,7 +88,11 @@ export default function AdminLogin() {
 
           {message && (
             <div
-              className={	ext-sm p-3 rounded }
+              className={`text-sm p-3 rounded ${
+                message.includes('error') || message.includes('Invalid')
+                  ? 'bg-red-50 text-red-800 border border-red-200'
+                  : 'bg-green-50 text-green-800 border border-green-200'
+              }`}
             >
               {message}
             </div>
