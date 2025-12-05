@@ -21,9 +21,12 @@ export default function AdminLogin() {
     }
   }, [])
 
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     setLoading(true)
     setMessage('')
+
+    const formData = new FormData(event.currentTarget)
 
     try {
       const result = await login(formData)
@@ -32,6 +35,7 @@ export default function AdminLogin() {
         setMessage(result.error)
         setLoading(false)
       }
+      // If successful, redirect() in the server action will handle navigation
     } catch (error) {
       console.error('Login error:', error)
       setMessage('An unexpected error occurred. Please try again.')
@@ -51,7 +55,7 @@ export default function AdminLogin() {
           </p>
         </div>
         
-        <form action={handleSubmit} className="mt-8 space-y-6">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div>
             <label htmlFor="email" className="sr-only">
               Email address
