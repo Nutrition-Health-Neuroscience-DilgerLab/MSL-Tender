@@ -1,55 +1,56 @@
+'use server'
+
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-type AdminUser = {
-  email: string
-  full_name: string | null
-  role: string
-  last_login: string | null
-}
-
 export default async function AdminDashboard() {
-  const supabase = await createClient()
+  try {
+    console.log('[Dashboard Page] ===== RENDERING PAGE =====')
+    
+    const supabase = await createClient()
+    console.log('[Dashboard Page] Supabase client created')
+    
+    console.log('[Dashboard Page] Calling getUser()...')
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    console.log('[Dashboard Page] User result:', user?.email || 'NULL')
+    console.log('[Dashboard Page] Error result:', userError?.message || 'NONE')
+    
+    if (!user) {
+      console.log('[Dashboard Page] ❌ NO USER - REDIRECTING TO LOGIN')
+      redirect('/admin/login')
+    }
+    
+    console.log('[Dashboard Page] ✓ User authenticated:', user.email)
+
+    // Check if user is an active admin
+    const { data: adminUserData, error: adminError } = await (supabase
+      .from('admin_users')
+      .select('email, full_name, role, last_login')
+      .eq('id', user.id)
+      .single() as any)
+
+    console.log('[Dashboard Page] Admin query result:', (adminUserData as any)?.email || 'NULL', 'Error:', (adminError as any)?.message || 'NONE')
+    
+    if (!adminUserData) {
+      console.log('[Dashboard Page] ❌ USER NOT ADMIN - REDIRECTING TO LOGIN')
+      redirect('/admin/login')
+    }
   
-  console.log('[Dashboard] Checking auth...')
-  
-  // Check if user is authenticated
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  
-  console.log('[Dashboard] User:', user?.email || 'none', 'Error:', userError?.message || 'none')
-  
-  if (!user) {
-    console.log('[Dashboard] No user, redirecting to login')
-    redirect('/admin/login')
-  }
+    const adminUser = adminUserData as any
+    console.log('[Dashboard Page] ✓ User is admin, rendering dashboard')
 
-  console.log('[Dashboard] User authenticated, checking admin status')
+    // Get counts for dashboard stats
+    const [samplesResult, experimentsResult] = await Promise.all([
+      supabase.from('pork_samples').select('id', { count: 'exact', head: true }),
+      supabase.from('experiments').select('id', { count: 'exact', head: true })
+    ])
 
-  // Check if user is an active admin
-  const { data: adminUser } = await supabase
-    .from('admin_users')
-    .select('email, full_name, role, last_login')
-    .eq('id', user.id)
-    .single() as { data: AdminUser | null }
+    const totalSamples = samplesResult.count || 0
+    const totalExperiments = experimentsResult.count || 0
 
-  if (!adminUser) {
-    redirect('/admin/login')
-  }
-
-  // TODO: Update last login timestamp (TypeScript typing issue to resolve)
-  // await supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', user.id)
-
-  // Get counts for dashboard stats
-  const [samplesResult, experimentsResult] = await Promise.all([
-    supabase.from('pork_samples').select('id', { count: 'exact', head: true }),
-    supabase.from('experiments').select('id', { count: 'exact', head: true })
-  ])
-
-  const totalSamples = samplesResult.count || 0
-  const totalExperiments = experimentsResult.count || 0
-
-  return (
-    <div className="min-h-screen bg-gray-50">
+    return (
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -60,7 +61,7 @@ export default async function AdminDashboard() {
                 Welcome, {adminUser.full_name || adminUser.email}
               </p>
             </div>
-            <form action="/auth/signout" method="post">
+            <form action="/api/auth/logout" method="post">
               <button
                 type="submit"
                 className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
@@ -217,5 +218,10 @@ export default async function AdminDashboard() {
         </div>
       </main>
     </div>
-  )
+    )
+  } catch (error) {
+    console.error('[Dashboard Page] EXCEPTION CAUGHT:', error)
+    console.error('[Dashboard Page] Error details:', JSON.stringify(error, null, 2))
+    throw error
+  }
 }

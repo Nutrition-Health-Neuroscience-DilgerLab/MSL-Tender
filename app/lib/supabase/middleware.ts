@@ -2,6 +2,10 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  // Log incoming cookies
+  const incomingCookies = request.cookies.getAll()
+  console.log('[Middleware] Incoming cookies:', incomingCookies.map(c => c.name))
+  
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -39,7 +43,8 @@ export async function updateSession(request: NextRequest) {
     
     const authPromise = supabase.auth.getUser()
     
-    await Promise.race([authPromise, timeoutPromise])
+    const result = await Promise.race([authPromise, timeoutPromise]) as { data: { user: { email?: string } | null }, error: Error | null }
+    console.log('[Middleware] Auth result:', result?.data?.user?.email || 'No user', result?.error?.message || 'No error')
   } catch (error) {
     console.error('Middleware auth error:', error)
     // Continue even if auth check fails to prevent 504 errors

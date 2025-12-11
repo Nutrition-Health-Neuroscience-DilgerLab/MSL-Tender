@@ -1,7 +1,6 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
@@ -30,60 +29,32 @@ export default function AdminLogin() {
     setLoading(true)
     setMessage('')
 
-    const supabase = createClient()
-
-    // Validate @illinois.edu domain
-    if (!email.endsWith('@illinois.edu')) {
-      setMessage('Please use your @illinois.edu email address')
-      setLoading(false)
-      return
-    }
-
-    if (!password) {
-      setMessage('Please enter your password')
-      setLoading(false)
-      return
-    }
-
     try {
-      console.log('[Password Login] Attempting login for:', email)
+      console.log('[Login Page] Calling /api/auth/login for:', email)
 
-      // Sign in with password
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Call the API endpoint which handles server-side auth
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       })
 
-      if (error) {
-        console.error('[Password Login] Error:', error)
-        setMessage('Invalid email or password')
+      const data = await response.json()
+
+      if (!response.ok) {
+        console.error('[Login Page] API error:', data.error)
+        setMessage(data.error || 'Authentication failed')
         setLoading(false)
         return
       }
 
-      console.log('[Password Login] Success! User:', data.user?.email)
-      console.log('[Password Login] Session:', data.session ? 'Present' : 'Missing')
-      
-      // Check admin_users table
-      const { data: adminUser, error: adminError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('id', data.user.id)
-        .single()
-      
-      console.log('[Password Login] Admin user check:', adminUser ? 'Found' : 'Not found', adminError)
-      
-      if (!adminUser) {
-        setMessage('User authenticated but not in admin whitelist. Please contact administrator.')
-        setLoading(false)
-        return
-      }
+      console.log('[Login Page] API success! User:', data.user)
+      console.log('[Login Page] Redirecting to:', data.redirectUrl)
 
-      console.log('[Password Login] All checks passed, redirecting to dashboard...')
-      
-      // Give the session time to fully establish before redirecting
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      window.location.href = '/admin/dashboard'
+      // Redirect to dashboard - the cookies are now set server-side
+      window.location.href = data.redirectUrl
     } catch (error) {
       setMessage('An unexpected error occurred. Please try again.')
       console.error('Login error:', error)
