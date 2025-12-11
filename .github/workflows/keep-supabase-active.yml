@@ -1,0 +1,44 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Run every 6 hours to ensure consistent activity
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  ping-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Ping Supabase Database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Simple query to keep database active
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "${SUPABASE_URL}/rest/v1/pork_samples?select=id&limit=1")
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ Successfully pinged Supabase database"
+            echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          else
+            echo "⚠️ Database ping returned status: $response"
+            exit 1
+          fi
+      
+      - name: Query Admin Users (additional activity)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Another query to ensure sufficient activity
+          curl -s -o /dev/null \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "${SUPABASE_URL}/rest/v1/admin_users?select=id&limit=1"
+          
+          echo "✅ Completed secondary database activity"
