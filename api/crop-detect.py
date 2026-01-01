@@ -2,22 +2,25 @@ import json
 import cv2
 import numpy as np
 import requests
-from http.server import BaseHTTPRequestHandler
 
-def handler(request):
-    """Vercel serverless function handler"""
-    if request.method != 'POST':
+def handler(event, context):
+    """AWS Lambda-style handler for Vercel"""
+    # Get HTTP method
+    http_method = event.get('httpMethod') or event.get('requestContext', {}).get('http', {}).get('method') or 'GET'
+    
+    if http_method != 'POST':
         return {
             'statusCode': 405,
+            'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': 'Method not allowed'})
         }
     
     try:
         # Parse request body
-        body = request.body
-        if isinstance(body, bytes):
-            body = body.decode('utf-8')
-        data = json.loads(body)
+        body_str = event.get('body', '{}')
+        if isinstance(body_str, bytes):
+            body_str = body_str.decode('utf-8')
+        data = json.loads(body_str)
         
         image_urls = data.get('urls', [])
         results = []
