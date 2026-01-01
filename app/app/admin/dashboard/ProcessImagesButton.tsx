@@ -9,8 +9,6 @@ export default function ProcessImagesButton() {
   const [status, setStatus] = useState<{ total: number; processed: number; remaining: number } | null>(null)
   const [message, setMessage] = useState<string>('')
   const [testMode, setTestMode] = useState(true)
-  const [cleaning, setCleaning] = useState(false)
-  const [cleanupMessage, setCleanupMessage] = useState<string>('')
 
   const fetchStatus = async () => {
     try {
@@ -69,30 +67,6 @@ export default function ProcessImagesButton() {
     }
   }
 
-  const cleanupR2 = async () => {
-    if (cleaning) return
-    
-    setCleaning(true)
-    setCleanupMessage('Cleaning up old R2 folders...')
-    
-    try {
-      const response = await fetch('/api/cleanup-r2', { method: 'POST' })
-      const result = await response.json()
-      
-      if (response.ok) {
-        const total = Object.values(result.results).reduce((sum: number, count) => sum + (count as number), 0)
-        setCleanupMessage(`Success! Deleted ${total} objects from old folders.`)
-      } else {
-        setCleanupMessage(`Error: ${result.error || result.details || 'Unknown error'}`)
-      }
-    } catch (error) {
-      console.error('Error cleaning up R2:', error)
-      setCleanupMessage(`Failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setCleaning(false)
-    }
-  }
-
   // Load status on mount
   useState(() => {
     fetchStatus()
@@ -135,20 +109,6 @@ export default function ProcessImagesButton() {
       >
         {processing ? 'Reprocessing...' : testMode ? 'Reprocess Test Images (10)' : 'Reprocess All'}
       </button>
-
-      <button
-        onClick={cleanupR2}
-        disabled={cleaning}
-        className="w-full mt-2 px-4 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {cleaning ? 'Cleaning...' : 'Clean Up Old R2 Folders'}
-      </button>
-
-      {cleanupMessage && (
-        <p className={`mt-2 text-sm ${cleanupMessage.startsWith('Success') ? 'text-green-600' : 'text-red-600'}`}>
-          {cleanupMessage}
-        </p>
-      )}
 
       {message && (
         <p className={`mt-3 text-sm ${message.startsWith('Success') ? 'text-green-600' : message.startsWith('Error') ? 'text-red-600' : 'text-gray-600'}`}>

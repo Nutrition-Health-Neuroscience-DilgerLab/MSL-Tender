@@ -115,6 +115,9 @@ database/consolidated_data*.csv
 # scripts/upload_images_to_supabase.py (legacy - still has hardcoded credentials)
 scripts/upload_images_to_supabase.py
 
+# Colab notebooks with embedded credentials
+scripts/process_chops_colab.ipynb
+
 # Validation reports (can be regenerated)
 database/validation_reports/
 
