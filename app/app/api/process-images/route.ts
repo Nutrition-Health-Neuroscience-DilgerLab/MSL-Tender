@@ -96,10 +96,14 @@ export async function POST(request: Request) {
         const processedBuffer = await processChopImage(imageRecord.image_url, coordinates)
         
         // Extract study number and filename from original URL
-        // URL format: https://...r2.dev/photos/20-04/image.jpg
+        // URL format: https://...r2.dev/original/20-04/image.jpg
         const urlParts = imageRecord.image_url.split('/')
-        const studyNumber = urlParts[urlParts.length - 2]
+        // Find the study number (folder after 'original')
+        const originalIndex = urlParts.findIndex(part => part === 'original')
+        const studyNumber = originalIndex >= 0 ? urlParts[originalIndex + 1] : urlParts[urlParts.length - 2]
         const filename = urlParts[urlParts.length - 1]
+        
+        console.log(`[Process Images] Extracted path - study: ${studyNumber}, file: ${filename}`)
         
         // Upload processed image to R2
         const { url: processedUrl } = await uploadProcessedImage(
