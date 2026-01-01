@@ -33,7 +33,9 @@ export default function ProcessImagesButton() {
         setMessage(`Success! Cropped ${result.processed} images. Failed: ${result.failed}`)
         await fetchStatus()
       } else {
-        setMessage(`Error: ${result.error}`)
+        const errorDetails = result.details || result.error || 'Unknown error'
+        setMessage(`Error: ${errorDetails}`)
+        console.error('Full error response:', result)
       }
     } catch (error) {
       console.error('Error cropping images:', error)

@@ -52,8 +52,12 @@ export async function POST(request: Request) {
     const imageRecords = images as ImageRecord[]
     const imageUrls = imageRecords.map(img => img.image_url)
 
-    // Call Python script
+    // Call Python script - handle both local and Vercel paths
     const scriptPath = path.join(process.cwd(), '../scripts/chop_detection.py')
+    console.log('Script path:', scriptPath)
+    console.log('Current working directory:', process.cwd())
+    console.log('Processing', imageUrls.length, 'images in', isTestMode ? 'TEST' : 'PRODUCTION', 'mode')
+    
     const pythonProcess = spawn('python', [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe']
     })
@@ -81,14 +85,28 @@ export async function POST(request: Request) {
 
     if (exitCode !== 0) {
       console.error('Python script error:', errorOutput)
+      console.error('Python script stdout:', output)
+      console.error('Exit code:', exitCode)
       return NextResponse.json({ 
         error: 'Image processing failed',
-        details: errorOutput
+        details: errorOutput || 'Python script exited with non-zero code',
+        exitCode
       }, { status: 500 })
     }
 
     // Parse results
-    const results = JSON.parse(output)
+    let results
+    try {
+      results = JSON.parse(output)
+    } catch (parseError) {
+      console.error('Failed to parse Python output:', output)
+      console.error('Parse error:', parseError)
+      return NextResponse.json({
+        error: 'Failed to parse processing results',
+        details: 'Python script output was not valid JSON',
+        output: output.substring(0, 500)
+      }, { status: 500 })
+    }
 
     // Update database with results
     const updates = []
@@ -135,9 +153,11 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Error processing images:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json({ 
       error: 'Failed to process images',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 })
   }
 }
