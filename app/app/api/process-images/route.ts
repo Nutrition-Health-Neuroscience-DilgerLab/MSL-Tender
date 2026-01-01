@@ -10,11 +10,14 @@ interface ImageRecord {
 }
 
 export async function POST(request: Request) {
+  console.log('[Process Images] Starting request')
   try {
     const supabase = await createClient()
+    console.log('[Process Images] Supabase client created')
 
     // Check authentication
     const { data: { user } } = await supabase.auth.getUser()
+    console.log('[Process Images] User check:', user ? `User ${user.id}` : 'No user')
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -23,6 +26,7 @@ export async function POST(request: Request) {
     const url = new URL(request.url)
     const isTestMode = url.searchParams.get('test') === 'true'
     const limit = isTestMode ? 5 : 100
+    console.log('[Process Images] Test mode:', isTestMode, 'Limit:', limit)
 
     // Get unprocessed images
     let query = supabase
@@ -37,7 +41,9 @@ export async function POST(request: Request) {
       query = query.order('random()', { ascending: true })
     }
     
+    console.log('[Process Images] Executing database query')
     const { data: images, error } = await query
+    console.log('[Process Images] Query result:', images?.length, 'images found')
     
     if (error) throw error
 
@@ -152,11 +158,17 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
-    console.error('Error processing images:', error)
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('[Process Images] CATCH BLOCK - Error type:', typeof error)
+    console.error('[Process Images] CATCH BLOCK - Error constructor:', error?.constructor?.name)
+    console.error('[Process Images] CATCH BLOCK - Is Error instance:', error instanceof Error)
+    console.error('[Process Images] CATCH BLOCK - Error:', error)
+    console.error('[Process Images] CATCH BLOCK - Error message:', error instanceof Error ? error.message : String(error))
+    console.error('[Process Images] CATCH BLOCK - Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    
     return NextResponse.json({ 
       error: 'Failed to process images',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      details: error instanceof Error ? error.message : String(error),
+      errorType: error?.constructor?.name || typeof error,
       stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 })
   }
