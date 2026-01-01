@@ -72,13 +72,27 @@ export async function POST(request: Request) {
 
     // Call Python API endpoint (Vercel Python function)
     console.log('[Process Images] Calling Python API with', imageUrls.length, 'URLs')
-    const pythonApiUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}/api/crop-detect`
-      : 'http://localhost:3000/api/crop-detect'
+    
+    // Build full URL for Python API
+    const protocol = request.headers.get('x-forwarded-proto') || 'https'
+    const host = request.headers.get('host') || 'localhost:3000'
+    const pythonApiUrl = `${protocol}://${host}/api/crop-detect`
+    console.log('[Process Images] Python API URL:', pythonApiUrl)
+    
+    // Forward authentication headers to Python API
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    }
+    
+    // Forward cookies for Vercel protection bypass
+    const cookieHeader = request.headers.get('cookie')
+    if (cookieHeader) {
+      headers['cookie'] = cookieHeader
+    }
     
     const pythonResponse = await fetch(pythonApiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ urls: imageUrls })
     })
 
