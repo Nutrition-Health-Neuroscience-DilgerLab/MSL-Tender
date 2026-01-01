@@ -273,7 +273,9 @@ CREATE TRIGGER update_experiments_updated_at
 -- ============================================
 
 -- Summary statistics per study
-CREATE VIEW study_summary AS
+-- Uses SECURITY INVOKER to respect RLS policies
+CREATE VIEW study_summary 
+WITH (security_invoker=true) AS
 SELECT 
     study_number,
     COUNT(*) as sample_count,
@@ -287,7 +289,9 @@ GROUP BY study_number
 ORDER BY study_number;
 
 -- Experiment participation summary
-CREATE VIEW experiment_participation AS
+-- Uses SECURITY INVOKER to respect RLS policies
+CREATE VIEW experiment_participation 
+WITH (security_invoker=true) AS
 SELECT 
     e.id,
     e.name,

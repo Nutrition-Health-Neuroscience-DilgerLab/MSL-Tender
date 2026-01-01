@@ -85,25 +85,33 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
 
-    // Manually set all auth cookies on the response
+    // Set Supabase auth cookies with correct naming format
+    // Format: sb-{project-ref}-auth-token and sb-{project-ref}-auth-token-code-verifier
     if (data.session) {
-      // Set access token with explicit path to root
-      response.cookies.set('sb-access-token', data.session.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 3600,
-        path: '/',
-      })
-
-      // Set refresh token with explicit path to root
-      response.cookies.set('sb-refresh-token', data.session.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 604800,
-        path: '/',
-      })
+      const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL!.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1]
+      
+      if (projectRef) {
+        // Set the main auth token cookie that Supabase expects
+        response.cookies.set(`sb-${projectRef}-auth-token`, 
+          JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_at: data.session.expires_at,
+            expires_in: data.session.expires_in,
+            token_type: 'bearer',
+            user: data.session.user
+          }), 
+          {
+            httpOnly: false, // Supabase client needs to read this
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: data.session.expires_in || 3600,
+            path: '/',
+          }
+        )
+        
+        console.log('[API Auth] Set cookie:', `sb-${projectRef}-auth-token`)
+      }
     }
 
     console.log('[API Auth] Response cookies set:', response.cookies.getAll().map(c => c.name))
