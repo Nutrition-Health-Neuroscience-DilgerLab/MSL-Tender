@@ -64,10 +64,18 @@ export default function CreateExperimentPage() {
 
     // Get images for samples
     const sampleIds = samplesData?.map((s: any) => s.id) || []
-    const { data: images } = await supabase
+    const { data: images, error: imagesError } = await supabase
       .from('sample_images')
       .select('sample_id, image_url')
       .in('sample_id', sampleIds)
+
+    if (imagesError) {
+      console.error('Error fetching images:', imagesError)
+    }
+    console.log('Fetched images:', images?.length, 'for', sampleIds.length, 'samples')
+    if (images && images.length > 0) {
+      console.log('Sample image URL:', images[0].image_url)
+    }
 
     // Create image map
     const imageMap = new Map(
@@ -79,6 +87,8 @@ export default function CreateExperimentPage() {
       ...sample,
       image_url: imageMap.get(sample.id)
     })) || []
+
+    console.log('Samples with images:', samplesWithImages.filter(s => s.image_url).length, 'out of', samplesWithImages.length)
 
     setSamples(samplesWithImages)
 
@@ -474,9 +484,13 @@ export default function CreateExperimentPage() {
                                 fill
                                 className="object-cover"
                                 sizes="(max-width: 768px) 50vw, 33vw"
+                                onError={(e) => {
+                                  console.error('Image failed to load:', sample.image_url)
+                                  e.currentTarget.style.display = 'none'
+                                }}
                               />
                             ) : (
-                              <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
                                 No image
                               </div>
                             )}
@@ -490,6 +504,11 @@ export default function CreateExperimentPage() {
                             <div className="text-xs text-gray-500">
                               Study {sample.study_number}
                             </div>
+                            {sample.minolta_chop_l !== null && (
+                              <div className="text-xs text-gray-600 mt-1">
+                                L*: {sample.minolta_chop_l?.toFixed(1)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )
