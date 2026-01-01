@@ -3,6 +3,18 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
+type ProcessedImage = {
+  id: number
+  image_url: string
+  sample_id: number
+  crop_x1: number
+  crop_y1: number
+  crop_x2: number
+  crop_y2: number
+  crop_confidence: number
+  processed_at: string
+}
+
 export default async function CropTestPage() {
   const supabase = await createClient()
 
@@ -12,14 +24,14 @@ export default async function CropTestPage() {
     redirect('/admin/login')
   }
 
-  // Get the most recently processed images (last 10)
+  // Get all images that have been cropped
   const { data: images } = await supabase
     .from('sample_images')
     .select('id, image_url, sample_id, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence, processed_at')
     .eq('crop_processed', true)
     .not('crop_x1', 'is', null)
     .order('processed_at', { ascending: false })
-    .limit(10)
+    .returns<ProcessedImage[]>()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -27,9 +39,9 @@ export default async function CropTestPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Crop Test Results</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Cropped Images</h1>
               <p className="text-sm text-gray-600 mt-1">
-                Most recent {images?.length || 0} processed images
+                {images?.length || 0} total cropped images
               </p>
             </div>
             <Link
@@ -45,7 +57,7 @@ export default async function CropTestPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!images || images.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-gray-600">No processed images found. Run the crop test from the dashboard first.</p>
+            <p className="text-gray-600">No cropped images found. Run the crop process from the dashboard first.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

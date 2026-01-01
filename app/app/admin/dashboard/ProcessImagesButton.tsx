@@ -37,12 +37,10 @@ export default function ProcessImagesButton() {
         setMessage(`Success! Cropped ${result.processed} images. Failed: ${result.failed}`)
         await fetchStatus()
         
-        // If in test mode, redirect to the crop test results page
-        if (testMode) {
-          setTimeout(() => {
-            router.push('/admin/crop-test')
-          }, 1000)
-        }
+        // Redirect to the cropped images page to see results
+        setTimeout(() => {
+          router.push('/admin/crop-test')
+        }, 1000)
       } else {
         const errorDetails = result.details || result.error || 'Unknown error'
         const exitCode = result.exitCode ? ` (exit code: ${result.exitCode})` : ''
@@ -110,8 +108,8 @@ export default function ProcessImagesButton() {
 
       <p className="mt-3 text-xs text-gray-500">
         {testMode 
-          ? 'Test mode will process 5 random unprocessed images to verify the algorithm.' 
-          : 'Automatically detects and crops pork chop images for better display. Processes in batches of 100.'}
+          ? 'Test mode will process 5 random unprocessed images. View results after processing completes.' 
+          : 'Automatically detects and crops pork chop images for better display. Processes in batches of 100. View results after processing completes.'}
       </p>
     </div>
   )
