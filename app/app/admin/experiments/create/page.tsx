@@ -19,6 +19,16 @@ type FilterCriteria = {
   phRange: { min: number; max: number } | null
 }
 
+type FieldBounds = {
+  minolta_chop_l: { min: number; max: number }
+  minolta_chop_a: { min: number; max: number }
+  minolta_chop_b: { min: number; max: number }
+  chop_color: { min: number; max: number }
+  chop_marbling: { min: number; max: number }
+  chop_firmness: { min: number; max: number }
+  ph: { min: number; max: number }
+}
+
 type ExperimentConfig = {
   name: string
   description: string
@@ -36,6 +46,7 @@ export default function CreateExperimentPage() {
   const [availableStudies, setAvailableStudies] = useState<number[]>([])
   const [matchingCount, setMatchingCount] = useState<number>(0)
   const [loading, setLoading] = useState(false)
+  const [bounds, setBounds] = useState<FieldBounds | null>(null)
   
   // Step 1: Filter criteria
   const [filters, setFilters] = useState<FilterCriteria>({
@@ -61,6 +72,7 @@ export default function CreateExperimentPage() {
   useEffect(() => {
     loadUser()
     loadAvailableStudies()
+    loadSampleBounds()
   }, [])
 
   useEffect(() => {
@@ -85,6 +97,17 @@ export default function CreateExperimentPage() {
       setAvailableStudies(studies)
     }
   }
+
+  const loadSampleBounds = async () => {
+    try {
+      const response = await fetch('/api/sample-bounds')
+      const data = await response.json()
+      setBounds(data)
+    } catch (error) {
+      console.error('Error loading sample bounds:', error)
+    }
+  }
+
 
   const updateMatchingCount = async () => {
     setLoading(true)
@@ -336,75 +359,111 @@ export default function CreateExperimentPage() {
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">L* (Lightness: 0-100)</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      L* (Lightness{bounds ? `: ${bounds.minolta_chop_l.min}-${bounds.minolta_chop_l.max}` : ''})
+                    </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        placeholder="Min"
+                        placeholder={bounds ? String(bounds.minolta_chop_l.min) : 'Min'}
                         value={filters.minoLRange?.min ?? ''}
+                        min={bounds?.minolta_chop_l.min}
+                        max={bounds?.minolta_chop_l.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          minoLRange: e.target.value ? { min: Number(e.target.value), max: prev.minoLRange?.max ?? 100 } : null
+                          minoLRange: e.target.value ? { 
+                            min: Number(e.target.value), 
+                            max: prev.minoLRange?.max ?? bounds?.minolta_chop_l.max ?? 100 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                       <input
                         type="number"
-                        placeholder="Max"
+                        placeholder={bounds ? String(bounds.minolta_chop_l.max) : 'Max'}
                         value={filters.minoLRange?.max ?? ''}
+                        min={bounds?.minolta_chop_l.min}
+                        max={bounds?.minolta_chop_l.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          minoLRange: e.target.value ? { min: prev.minoLRange?.min ?? 0, max: Number(e.target.value) } : null
+                          minoLRange: e.target.value ? { 
+                            min: prev.minoLRange?.min ?? bounds?.minolta_chop_l.min ?? 0, 
+                            max: Number(e.target.value) 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">a* (Red/Green: -60 to +60)</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      a* (Red/Green{bounds ? `: ${bounds.minolta_chop_a.min}-${bounds.minolta_chop_a.max}` : ''})
+                    </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        placeholder="Min"
+                        placeholder={bounds ? String(bounds.minolta_chop_a.min) : 'Min'}
                         value={filters.minoARange?.min ?? ''}
+                        min={bounds?.minolta_chop_a.min}
+                        max={bounds?.minolta_chop_a.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          minoARange: e.target.value ? { min: Number(e.target.value), max: prev.minoARange?.max ?? 60 } : null
+                          minoARange: e.target.value ? { 
+                            min: Number(e.target.value), 
+                            max: prev.minoARange?.max ?? bounds?.minolta_chop_a.max ?? 60 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                       <input
                         type="number"
-                        placeholder="Max"
+                        placeholder={bounds ? String(bounds.minolta_chop_a.max) : 'Max'}
                         value={filters.minoARange?.max ?? ''}
+                        min={bounds?.minolta_chop_a.min}
+                        max={bounds?.minolta_chop_a.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          minoARange: e.target.value ? { min: prev.minoARange?.min ?? -60, max: Number(e.target.value) } : null
+                          minoARange: e.target.value ? { 
+                            min: prev.minoARange?.min ?? bounds?.minolta_chop_a.min ?? -60, 
+                            max: Number(e.target.value) 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">b* (Yellow/Blue: -60 to +60)</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      b* (Yellow/Blue{bounds ? `: ${bounds.minolta_chop_b.min}-${bounds.minolta_chop_b.max}` : ''})
+                    </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        placeholder="Min"
+                        placeholder={bounds ? String(bounds.minolta_chop_b.min) : 'Min'}
                         value={filters.minoBRange?.min ?? ''}
+                        min={bounds?.minolta_chop_b.min}
+                        max={bounds?.minolta_chop_b.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          minoBRange: e.target.value ? { min: Number(e.target.value), max: prev.minoBRange?.max ?? 60 } : null
+                          minoBRange: e.target.value ? { 
+                            min: Number(e.target.value), 
+                            max: prev.minoBRange?.max ?? bounds?.minolta_chop_b.max ?? 60 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                       <input
                         type="number"
-                        placeholder="Max"
+                        placeholder={bounds ? String(bounds.minolta_chop_b.max) : 'Max'}
                         value={filters.minoBRange?.max ?? ''}
+                        min={bounds?.minolta_chop_b.min}
+                        max={bounds?.minolta_chop_b.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          minoBRange: e.target.value ? { min: prev.minoBRange?.min ?? -60, max: Number(e.target.value) } : null
+                          minoBRange: e.target.value ? { 
+                            min: prev.minoBRange?.min ?? bounds?.minolta_chop_b.min ?? -60, 
+                            max: Number(e.target.value) 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
@@ -416,7 +475,7 @@ export default function CreateExperimentPage() {
               {/* Sensory Score Ranges */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Sensory Scores (1-6)
+                  Sensory Scores{bounds ? ` (${bounds.chop_color.min}-${bounds.chop_color.max})` : ''}
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -424,25 +483,31 @@ export default function CreateExperimentPage() {
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        min="1"
-                        max="6"
-                        placeholder="Min"
+                        placeholder={bounds ? String(bounds.chop_color.min) : 'Min'}
                         value={filters.colorRange?.min ?? ''}
+                        min={bounds?.chop_color.min}
+                        max={bounds?.chop_color.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          colorRange: e.target.value ? { min: Number(e.target.value), max: prev.colorRange?.max ?? 6 } : null
+                          colorRange: e.target.value ? { 
+                            min: Number(e.target.value), 
+                            max: prev.colorRange?.max ?? bounds?.chop_color.max ?? 6 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                       <input
                         type="number"
-                        min="1"
-                        max="6"
-                        placeholder="Max"
+                        placeholder={bounds ? String(bounds.chop_color.max) : 'Max'}
                         value={filters.colorRange?.max ?? ''}
+                        min={bounds?.chop_color.min}
+                        max={bounds?.chop_color.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          colorRange: e.target.value ? { min: prev.colorRange?.min ?? 1, max: Number(e.target.value) } : null
+                          colorRange: e.target.value ? { 
+                            min: prev.colorRange?.min ?? bounds?.chop_color.min ?? 1, 
+                            max: Number(e.target.value) 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
@@ -453,25 +518,31 @@ export default function CreateExperimentPage() {
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        min="1"
-                        max="6"
-                        placeholder="Min"
+                        placeholder={bounds ? String(bounds.chop_marbling.min) : 'Min'}
                         value={filters.marblingRange?.min ?? ''}
+                        min={bounds?.chop_marbling.min}
+                        max={bounds?.chop_marbling.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          marblingRange: e.target.value ? { min: Number(e.target.value), max: prev.marblingRange?.max ?? 6 } : null
+                          marblingRange: e.target.value ? { 
+                            min: Number(e.target.value), 
+                            max: prev.marblingRange?.max ?? bounds?.chop_marbling.max ?? 6 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                       <input
                         type="number"
-                        min="1"
-                        max="6"
-                        placeholder="Max"
+                        placeholder={bounds ? String(bounds.chop_marbling.max) : 'Max'}
                         value={filters.marblingRange?.max ?? ''}
+                        min={bounds?.chop_marbling.min}
+                        max={bounds?.chop_marbling.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          marblingRange: e.target.value ? { min: prev.marblingRange?.min ?? 1, max: Number(e.target.value) } : null
+                          marblingRange: e.target.value ? { 
+                            min: prev.marblingRange?.min ?? bounds?.chop_marbling.min ?? 1, 
+                            max: Number(e.target.value) 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
@@ -482,25 +553,31 @@ export default function CreateExperimentPage() {
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        min="1"
-                        max="6"
-                        placeholder="Min"
+                        placeholder={bounds ? String(bounds.chop_firmness.min) : 'Min'}
                         value={filters.firmnessRange?.min ?? ''}
+                        min={bounds?.chop_firmness.min}
+                        max={bounds?.chop_firmness.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          firmnessRange: e.target.value ? { min: Number(e.target.value), max: prev.firmnessRange?.max ?? 6 } : null
+                          firmnessRange: e.target.value ? { 
+                            min: Number(e.target.value), 
+                            max: prev.firmnessRange?.max ?? bounds?.chop_firmness.max ?? 6 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                       <input
                         type="number"
-                        min="1"
-                        max="6"
-                        placeholder="Max"
+                        placeholder={bounds ? String(bounds.chop_firmness.max) : 'Max'}
                         value={filters.firmnessRange?.max ?? ''}
+                        min={bounds?.chop_firmness.min}
+                        max={bounds?.chop_firmness.max}
                         onChange={(e) => setFilters(prev => ({
                           ...prev,
-                          firmnessRange: e.target.value ? { min: prev.firmnessRange?.min ?? 1, max: Number(e.target.value) } : null
+                          firmnessRange: e.target.value ? { 
+                            min: prev.firmnessRange?.min ?? bounds?.chop_firmness.min ?? 1, 
+                            max: Number(e.target.value) 
+                          } : null
                         }))}
                         className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
@@ -512,28 +589,38 @@ export default function CreateExperimentPage() {
               {/* pH Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  pH Range (optional)
+                  pH Range{bounds ? ` (${bounds.ph.min}-${bounds.ph.max})` : ''}
                 </label>
                 <div className="flex gap-2 max-w-xs">
                   <input
                     type="number"
-                    step="0.1"
-                    placeholder="Min"
+                    step="0.01"
+                    placeholder={bounds ? String(bounds.ph.min) : 'Min'}
                     value={filters.phRange?.min ?? ''}
+                    min={bounds?.ph.min}
+                    max={bounds?.ph.max}
                     onChange={(e) => setFilters(prev => ({
                       ...prev,
-                      phRange: e.target.value ? { min: Number(e.target.value), max: prev.phRange?.max ?? 7 } : null
+                      phRange: e.target.value ? { 
+                        min: Number(e.target.value), 
+                        max: prev.phRange?.max ?? bounds?.ph.max ?? 7 
+                      } : null
                     }))}
                     className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                   <input
                     type="number"
-                    step="0.1"
-                    placeholder="Max"
+                    step="0.01"
+                    placeholder={bounds ? String(bounds.ph.max) : 'Max'}
                     value={filters.phRange?.max ?? ''}
+                    min={bounds?.ph.min}
+                    max={bounds?.ph.max}
                     onChange={(e) => setFilters(prev => ({
                       ...prev,
-                      phRange: e.target.value ? { min: prev.phRange?.min ?? 5, max: Number(e.target.value) } : null
+                      phRange: e.target.value ? { 
+                        min: prev.phRange?.min ?? bounds?.ph.min ?? 5, 
+                        max: Number(e.target.value) 
+                      } : null
                     }))}
                     className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
