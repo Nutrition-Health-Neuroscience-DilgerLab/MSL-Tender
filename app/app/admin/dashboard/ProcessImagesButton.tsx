@@ -20,21 +20,23 @@ export default function ProcessImagesButton() {
     }
   }
 
-  const processImages = async () => {
+  const processImages = async (reprocess = false) => {
     if (processing) return
     
     setProcessing(true)
-    setMessage('Cropping images...')
+    setMessage(reprocess ? 'Reprocessing images...' : 'Cropping images...')
     
     try {
-      const url = testMode ? '/api/process-images?test=true' : '/api/process-images'
+      let url = testMode ? '/api/process-images?test=true' : '/api/process-images'
+      if (reprocess) url += testMode ? '&reprocess=true' : '?reprocess=true'
+      
       const response = await fetch(url, { method: 'POST' })
       const result = await response.json()
       
       console.log('API Response:', { status: response.status, result })
       
       if (response.ok) {
-        setMessage(`Success! Cropped ${result.processed} images. Failed: ${result.failed}`)
+        setMessage(`Success! ${reprocess ? 'Reprocessed' : 'Cropped'} ${result.processed} images. Failed: ${result.failed}`)
         await fetchStatus()
         
         // Redirect to the cropped images page to see results
@@ -93,11 +95,19 @@ export default function ProcessImagesButton() {
       </label>
 
       <button
-        onClick={processImages}
+        onClick={() => processImages(false)}
         disabled={processing || (status?.remaining === 0)}
         className="w-full px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {processing ? 'Cropping...' : testMode ? 'Test Crop (5 Images)' : 'Crop Images'}
+      </button>
+
+      <button
+        onClick={() => processImages(true)}
+        disabled={processing || (status?.processed === 0)}
+        className="w-full mt-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {processing ? 'Reprocessing...' : testMode ? 'Reprocess Test Images (10)' : 'Reprocess All'}
       </button>
 
       {message && (

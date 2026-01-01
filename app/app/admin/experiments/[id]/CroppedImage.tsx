@@ -33,8 +33,8 @@ export default function CroppedImage({ imageUrl, imageId, alt, cropCoords, sizes
   const hasCropCoords = cropCoords && cropCoords.x1 !== 0 && cropCoords.x2 !== 0
   
   if (hasCropCoords && !showFull) {
-    // Use the crop API endpoint
-    const croppedUrl = `/api/crop-image?id=${imageId}&x1=${cropCoords.x1}&y1=${cropCoords.y1}&x2=${cropCoords.x2}&y2=${cropCoords.y2}`
+    // Use the crop API endpoint (it handles background removal internally)
+    const croppedUrl = `/api/crop-image?id=${imageId}`
     
     return (
       <div className="relative h-full w-full">

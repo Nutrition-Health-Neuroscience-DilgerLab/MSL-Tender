@@ -62,7 +62,7 @@ export default async function CropTestPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {images.map((image) => {
-              const croppedUrl = `/api/crop-image?id=${image.id}&x1=${image.crop_x1}&y1=${image.crop_y1}&x2=${image.crop_x2}&y2=${image.crop_y2}`
+              const croppedUrl = `/api/crop-image?id=${image.id}`
               const confidence = Math.round((image.crop_confidence || 0) * 100)
               
               return (

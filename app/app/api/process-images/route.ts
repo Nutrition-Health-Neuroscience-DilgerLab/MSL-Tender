@@ -21,33 +21,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if test mode
+    // Check if test mode or reprocess mode
     const url = new URL(request.url)
     const isTestMode = url.searchParams.get('test') === 'true'
-    const fetchLimit = isTestMode ? 20 : 100 // Fetch more for random selection in test mode
-    console.log('[Process Images] Test mode:', isTestMode, 'Fetch limit:', fetchLimit)
+    const isReprocess = url.searchParams.get('reprocess') === 'true'
+    const fetchLimit = isTestMode ? 20 : 100
+    console.log('[Process Images] Test mode:', isTestMode, 'Reprocess:', isReprocess, 'Fetch limit:', fetchLimit)
 
-    // Get unprocessed images
-    const { data: images, error } = await supabase
+    // Get images based on mode
+    let query = supabase
       .from('sample_images')
       .select('id, image_url, sample_id')
-      .eq('crop_processed', false)
-      .limit(fetchLimit)
     
-    console.log('[Process Images] Query result:', images?.length, 'images found')
+    if (!isReprocess) {
+      // Normal mode: only unprocessed images
+      query = query.eq('crop_processed', false)
+    } else if (isTestMode && isReprocess) {
+      // Reprocess mode with test: get already processed images
+      query = query.eq('crop_processed', true).limit(10)
+    }
     
+    query = query.limit(fetchLimit)
+    
+    const { data: images, error } = await query
     if (error) throw error
 
     if (!images || images.length === 0) {
       return NextResponse.json({ 
-        message: 'No unprocessed images found',
+        message: isReprocess ? 'No processed images to reprocess' : 'No unprocessed images found',
         processed: 0 
       })
     }
 
     // For test mode, randomly select 5 images from the results
     let selectedImages = images
-    if (isTestMode && images.length > 5) {
+    if (isTestMode && images.length > 5 && !isReprocess) {
       // Fisher-Yates shuffle and take first 5
       const shuffled = [...images]
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -56,15 +64,6 @@ export async function POST(request: Request) {
       }
       selectedImages = shuffled.slice(0, 5)
       console.log('[Process Images] Randomly selected 5 images from', images.length)
-    }
-    
-    if (error) throw error
-
-    if (!images || images.length === 0) {
-      return NextResponse.json({ 
-        message: 'No unprocessed images found',
-        processed: 0 
-      })
     }
 
     // Extract image URLs
