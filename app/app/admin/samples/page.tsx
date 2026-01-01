@@ -22,6 +22,7 @@ export default async function SamplesPage() {
     .order('study_number', { ascending: true })
     .order('standardized_chop_id', { ascending: true })
     .limit(50)
+    .returns<Sample[]>()
 
   if (error) {
     console.error('Error fetching samples:', error)

@@ -3,6 +3,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+type AdminUser = {
+  email: string
+  full_name: string | null
+  role: string
+  last_login: string | null
+}
+
 export default async function AdminDashboard() {
   try {
     console.log('[Dashboard Page] ===== RENDERING PAGE =====')
@@ -28,7 +35,7 @@ export default async function AdminDashboard() {
       .from('admin_users')
       .select('email, full_name, role, last_login')
       .eq('id', user.id)
-      .single()
+      .single<AdminUser>()
 
     console.log('[Dashboard Page] Admin query result:', adminUserData?.email || 'NULL', 'Error:', adminError?.message || 'NONE')
     
