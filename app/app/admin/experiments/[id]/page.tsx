@@ -65,8 +65,7 @@ export default async function ExperimentDetailsPage({
     .select(`
       id,
       sample_id,
-      display_order,
-      set_number,
+      sample_order,
       pork_samples!inner (
         standardized_chop_id,
         study_number,
@@ -75,8 +74,7 @@ export default async function ExperimentDetailsPage({
       )
     `)
     .eq('experiment_id', id)
-    .order('set_number', { ascending: true })
-    .order('display_order', { ascending: true })
+    .order('sample_order', { ascending: true })
 
   // Get images for samples
   const sampleIds = experimentSamples?.map((es: any) => es.sample_id) || []
@@ -93,8 +91,8 @@ export default async function ExperimentDetailsPage({
   const samplesWithImages: ExperimentSample[] = experimentSamples?.map((es: any) => ({
     id: es.id,
     sample_id: es.sample_id,
-    display_order: es.display_order,
-    set_number: es.set_number,
+    display_order: es.sample_order,
+    set_number: Math.floor((es.sample_order || 0) / 4),
     sample: Array.isArray(es.pork_samples) ? es.pork_samples[0] : es.pork_samples,
     image_url: imageMap.get(es.sample_id)
   })) || []
@@ -162,6 +160,14 @@ export default async function ExperimentDetailsPage({
               {experiment.description && (
                 <p className="text-gray-600 mt-2">{experiment.description}</p>
               )}
+            </div>
+            <div className="flex gap-3">
+              <Link
+                href={`/admin/experiments/${experiment.id}/preview`}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+              >
+                Preview Survey
+              </Link>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import DeleteButton from './DeleteButton'
 
 type Experiment = {
   id: string
@@ -223,12 +224,16 @@ export default async function ExperimentsPage() {
                       {experiment.status === 'active' && (
                         <Link
                           href={`/survey/${experiment.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 mr-4"
                           target="_blank"
                         >
                           Survey Link
                         </Link>
                       )}
+                      <DeleteButton 
+                        experimentId={experiment.id} 
+                        experimentName={experiment.name}
+                      />
                     </td>
                   </tr>
                 ))}
