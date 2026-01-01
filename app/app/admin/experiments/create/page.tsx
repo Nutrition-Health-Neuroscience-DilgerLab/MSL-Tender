@@ -15,6 +15,11 @@ type Sample = {
   chop_marbling: number | null
   chop_firmness: number | null
   ph: number | null
+  minolta_chop_l: number | null
+  minolta_chop_a: number | null
+  minolta_chop_b: number | null
+  moisture_percent: number | null
+  fat_percent: number | null
   image_url?: string
 }
 
@@ -29,6 +34,11 @@ export default function CreateExperimentPage() {
   const [studyFilter, setStudyFilter] = useState<number | null>(null)
   const [availableStudies, setAvailableStudies] = useState<number[]>([])
   
+  // Minolta color filters
+  const [minoLFilter, setMinoLFilter] = useState<{ min: number; max: number } | null>(null)
+  const [minoAFilter, setMinoAFilter] = useState<{ min: number; max: number } | null>(null)
+  const [minoBFilter, setMinoBFilter] = useState<{ min: number; max: number } | null>(null)
+  
   // Form state
   const [experimentName, setExperimentName] = useState('')
   const [description, setDescription] = useState('')
@@ -39,10 +49,10 @@ export default function CreateExperimentPage() {
   const loadSamples = async () => {
     setLoading(true)
     
-    // Get all samples
+    // Get all samples with Minolta data
     const { data: samplesData, error: samplesError } = await supabase
       .from('pork_samples')
-      .select('id, study_number, standardized_chop_id, chop_color, chop_marbling, chop_firmness, ph')
+      .select('id, study_number, standardized_chop_id, chop_color, chop_marbling, chop_firmness, ph, minolta_chop_l, minolta_chop_a, minolta_chop_b, moisture_percent, fat_percent')
       .order('study_number', { ascending: true })
       .order('standardized_chop_id', { ascending: true })
 
@@ -98,7 +108,10 @@ export default function CreateExperimentPage() {
   const filteredSamples = samples.filter(sample => {
     const matchesSearch = sample.standardized_chop_id.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStudy = studyFilter === null || sample.study_number === studyFilter
-    return matchesSearch && matchesStudy
+    const matchesMinoL = !minoLFilter || (sample.minolta_chop_l !== null && sample.minolta_chop_l >= minoLFilter.min && sample.minolta_chop_l <= minoLFilter.max)
+    const matchesMinoA = !minoAFilter || (sample.minolta_chop_a !== null && sample.minolta_chop_a >= minoAFilter.min && sample.minolta_chop_a <= minoAFilter.max)
+    const matchesMinoB = !minoBFilter || (sample.minolta_chop_b !== null && sample.minolta_chop_b >= minoBFilter.min && sample.minolta_chop_b <= minoBFilter.max)
+    return matchesSearch && matchesStudy && matchesMinoL && matchesMinoA && matchesMinoB
   })
 
   const isValidSelection = () => {
@@ -214,9 +227,18 @@ export default function CreateExperimentPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: Experiment Configuration */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6 sticky top-24">
+            <div className="bg-white rounded-lg shadow p-6 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Experiment Details</h2>
               
+              {/* Create Button at Top */}
+              <button
+                onClick={createExperiment}
+                disabled={!isValidSelection() || !experimentName.trim() || creating}
+                className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium mb-6"
+              >
+                {creating ? 'Creating...' : 'Create Experiment'}
+              </button>
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -226,7 +248,7 @@ export default function CreateExperimentPage() {
                     type="text"
                     value={experimentName}
                     onChange={(e) => setExperimentName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 font-normal"
                     placeholder="e.g., Spring 2025 Tenderness Study"
                   />
                 </div>
@@ -239,7 +261,7 @@ export default function CreateExperimentPage() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 font-normal"
                     placeholder="Optional description..."
                   />
                 </div>
@@ -251,7 +273,7 @@ export default function CreateExperimentPage() {
                   <select
                     value={experimentType}
                     onChange={(e) => setExperimentType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 font-normal"
                   >
                     <option value="paired_comparison">Paired Comparison</option>
                     <option value="ranking">Ranking</option>
@@ -278,24 +300,16 @@ export default function CreateExperimentPage() {
                     <p><strong>Sets of 4:</strong> {Math.floor(selectedSamples.size / 4)}</p>
                   </div>
                 </div>
-
-                <button
-                  onClick={createExperiment}
-                  disabled={!isValidSelection() || !experimentName.trim() || creating}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-                >
-                  {creating ? 'Creating...' : 'Create Experiment'}
-                </button>
               </div>
             </div>
           </div>
 
           {/* Right: Sample Selection */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow">
+            <div className="bg-white rounded-lg shadow overflow-hidden relative">
               {/* Filters */}
-              <div className="p-4 border-b border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 border-b border-gray-200 sticky top-20 bg-white z-20">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Search
@@ -305,7 +319,7 @@ export default function CreateExperimentPage() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Search by Chop ID..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 font-normal"
                     />
                   </div>
                   <div>
@@ -315,7 +329,7 @@ export default function CreateExperimentPage() {
                     <select
                       value={studyFilter || ''}
                       onChange={(e) => setStudyFilter(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 font-normal"
                     >
                       <option value="">All Studies</option>
                       {availableStudies.map(study => (
@@ -324,10 +338,104 @@ export default function CreateExperimentPage() {
                     </select>
                   </div>
                 </div>
+                
+                {/* Minolta Color Filters */}
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                    Advanced Filters (Minolta Color Values)
+                  </summary>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        L* (Lightness: 0-100)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : null
+                            setMinoLFilter(prev => val !== null ? { min: val, max: prev?.max ?? 100 } : null)
+                          }}
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-normal"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Max"
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : null
+                            setMinoLFilter(prev => val !== null ? { min: prev?.min ?? 0, max: val } : null)
+                          }}
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-normal"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        a* (Red/Green: -60 to +60)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : null
+                            setMinoAFilter(prev => val !== null ? { min: val, max: prev?.max ?? 60 } : null)
+                          }}
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-normal"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Max"
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : null
+                            setMinoAFilter(prev => val !== null ? { min: prev?.min ?? -60, max: val } : null)
+                          }}
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-normal"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        b* (Yellow/Blue: -60 to +60)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : null
+                            setMinoBFilter(prev => val !== null ? { min: val, max: prev?.max ?? 60 } : null)
+                          }}
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-normal"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Max"
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : null
+                            setMinoBFilter(prev => val !== null ? { min: prev?.min ?? -60, max: val } : null)
+                          }}
+                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-normal"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMinoLFilter(null)
+                      setMinoAFilter(null)
+                      setMinoBFilter(null)
+                    }}
+                    className="mt-2 text-xs text-gray-600 hover:text-gray-900"
+                  >
+                    Clear all filters
+                  </button>
+                </details>
               </div>
 
               {/* Sample Grid */}
-              <div className="p-4">
+              <div className="p-4 max-h-[calc(100vh-20rem)] overflow-y-auto">
                 {loading ? (
                   <div className="text-center py-12 text-gray-500">Loading samples...</div>
                 ) : (
