@@ -45,12 +45,12 @@ export async function detectChopBoundaries(imageUrl: string): Promise<CropCoordi
         const g = data[idx + 1];
         const b = data[idx + 2];
         
-        // Detect blue background: high blue channel, blue dominates red/green
+        // Detect blue background: more aggressive detection
         // Everything else (chop, fat, marbling) is NOT blue background
         const isBlueBackground = 
-          b > 120 &&                      // Blue channel high enough
-          b > r + 15 &&                   // Blue significantly more than red
-          b > g + 10;                     // Blue more than green
+          b > 100 &&                      // Blue channel high enough (lowered from 120)
+          b > r + 10 &&                   // Blue more than red (lowered from 15)
+          b > g + 5;                      // Blue more than green (lowered from 10)
         
         // Keep everything that's NOT blue background
         // This includes meat, fat, marbling, and paper tag (we'll filter tag by size)
@@ -60,10 +60,10 @@ export async function detectChopBoundaries(imageUrl: string): Promise<CropCoordi
       }
     }
     
-    // Apply morphological operations to clean up mask - more aggressive
-    // Remove small noise and fill small holes
-    const cleaned = new Uint8Array(width * height);
-    const kernelSize = 9; // Larger kernel for better cleaning
+    // Apply morphological operations to clean up mask
+    // Step 1: Erosion to remove noise and separate tag from chop
+    const eroded = new Uint8Array(width * height);
+    const kernelSize = 7;
     const kernelRadius = Math.floor(kernelSize / 2);
     
     for (let y = kernelRadius; y < height - kernelRadius; y++) {
@@ -74,10 +74,13 @@ export async function detectChopBoundaries(imageUrl: string): Promise<CropCoordi
             sum += mask[(y + ky) * width + (x + kx)];
           }
         }
-        // If majority of neighbors are chop pixels, this is a chop pixel
-        cleaned[y * width + x] = sum > (kernelSize * kernelSize * 0.6) ? 1 : 0;
+        // Require high percentage of neighbors to be chop pixels
+        eroded[y * width + x] = sum > (kernelSize * kernelSize * 0.7) ? 1 : 0;
       }
     }
+    
+    // Step 2: After finding largest component, dilate it to reclaim edge pixels
+    const cleaned = eroded;
     
     // Find connected components and keep only the largest one (the chop)
     // This removes the paper tag which is a separate component
@@ -216,9 +219,9 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
       
       // Same blue background detection as in detectChopBoundaries
       const isBlueBackground = 
-        b > 120 &&
-        b > r + 15 &&
-        b > g + 10;
+        b > 100 &&
+        b > r + 10 &&
+        b > g + 5;
       
       // Keep everything that's NOT blue background
       if (!isBlueBackground) {
@@ -227,9 +230,9 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
     }
   }
   
-  // Apply morphological cleaning
-  const cleaned = new Uint8Array(width * height);
-  const kernelSize = 9;
+  // Apply morphological cleaning - erosion to separate tag from chop
+  const eroded = new Uint8Array(width * height);
+  const kernelSize = 7;
   const kernelRadius = Math.floor(kernelSize / 2);
   
   for (let y = kernelRadius; y < height - kernelRadius; y++) {
@@ -240,9 +243,11 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
           sum += mask[(y + ky) * width + (x + kx)];
         }
       }
-      cleaned[y * width + x] = sum > (kernelSize * kernelSize * 0.6) ? 1 : 0;
+      eroded[y * width + x] = sum > (kernelSize * kernelSize * 0.7) ? 1 : 0;
     }
   }
+  
+  const cleaned = eroded;
   
   // Find connected components and keep only the largest
   const labels = new Int32Array(width * height);
@@ -285,7 +290,30 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
     }
   }
   
-  // Create alpha channel - only keep the largest component
+  // Dilate the largest component to reclaim edge pixels
+  // This helps remove remaining blue pixels at the boundaries
+  const dilated = new Uint8Array(width * height);
+  const dilateKernel = 5;
+  const dilateRadius = Math.floor(dilateKernel / 2);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (labels[y * width + x] === largestLabel) {
+        // Expand this pixel's influence to neighbors
+        for (let dy = -dilateRadius; dy <= dilateRadius; dy++) {
+          for (let dx = -dilateRadius; dx <= dilateRadius; dx++) {
+            const ny = y + dy;
+            const nx = x + dx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+              dilated[ny * width + nx] = 1;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Create alpha channel - use dilated mask
   const outputData = Buffer.alloc(width * height * 4);
   
   for (let y = 0; y < height; y++) {
@@ -295,8 +323,8 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
       const g = data[idx + 1];
       const b = data[idx + 2];
       
-      // Only show pixels that belong to the largest component
-      if (labels[y * width + x] === largestLabel) {
+      // Show pixels that belong to the dilated chop mask
+      if (dilated[y * width + x] === 1) {
         outputData[idx] = r;
         outputData[idx + 1] = g;
         outputData[idx + 2] = b;
