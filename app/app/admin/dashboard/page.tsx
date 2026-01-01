@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 type AdminUser = {
   email: string
@@ -155,7 +156,7 @@ export default async function AdminDashboard() {
               </div>
             </a>
 
-            <a
+            <Link
               href="/admin/experiments/create"
               className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-green-500 transition-colors group"
             >
@@ -168,9 +169,9 @@ export default async function AdminDashboard() {
                 <p className="text-sm font-medium text-gray-900">Create Experiment</p>
                 <p className="text-xs text-gray-500">Start new survey</p>
               </div>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/admin/experiments"
               className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-green-500 transition-colors group"
             >
@@ -183,7 +184,7 @@ export default async function AdminDashboard() {
                 <p className="text-sm font-medium text-gray-900">View Experiments</p>
                 <p className="text-xs text-gray-500">Manage all surveys</p>
               </div>
-            </a>
+            </Link>
 
             {adminUser.role === 'super_admin' && (
               <a

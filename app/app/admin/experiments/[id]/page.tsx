@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
@@ -78,18 +79,18 @@ export default async function ExperimentDetailsPage({
     .order('display_order', { ascending: true })
 
   // Get images for samples
-  const sampleIds = experimentSamples?.map(es => es.sample_id) || []
+  const sampleIds = experimentSamples?.map((es: any) => es.sample_id) || []
   const { data: images } = await supabase
     .from('sample_images')
     .select('sample_id, image_url')
     .in('sample_id', sampleIds)
 
   const imageMap = new Map(
-    images?.map(img => [img.sample_id, img.image_url]) || []
+    images?.map((img: any) => [img.sample_id, img.image_url]) || []
   )
 
   // Transform the data
-  const samplesWithImages: ExperimentSample[] = experimentSamples?.map(es => ({
+  const samplesWithImages: ExperimentSample[] = experimentSamples?.map((es: any) => ({
     id: es.id,
     sample_id: es.sample_id,
     display_order: es.display_order,
