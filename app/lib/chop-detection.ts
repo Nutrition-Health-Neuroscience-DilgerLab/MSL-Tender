@@ -37,7 +37,6 @@ export async function detectChopBoundaries(imageUrl: string): Promise<CropCoordi
     // Create a binary mask for pixels that match chop color
     // Exclude both blue background AND white paper tags
     const mask = new Uint8Array(width * height);
-    let pixelCount = 0;
     
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -263,5 +262,5 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
     processed = processed.rotate(90);
   }
   
-  return processed.jpeg({ quality: 95, background: { r: 255, g: 255, b: 255 } }).toBuffer();
+  return processed.jpeg({ quality: 95 }).toBuffer();
 }
