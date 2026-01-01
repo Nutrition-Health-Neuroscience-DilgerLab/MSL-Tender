@@ -24,20 +24,20 @@ export default async function AdminDashboard() {
     console.log('[Dashboard Page] ✓ User authenticated:', user.email)
 
     // Check if user is an active admin
-    const { data: adminUserData, error: adminError } = await (supabase
+    const { data: adminUserData, error: adminError } = await supabase
       .from('admin_users')
       .select('email, full_name, role, last_login')
       .eq('id', user.id)
-      .single() as any)
+      .single()
 
-    console.log('[Dashboard Page] Admin query result:', (adminUserData as any)?.email || 'NULL', 'Error:', (adminError as any)?.message || 'NONE')
+    console.log('[Dashboard Page] Admin query result:', adminUserData?.email || 'NULL', 'Error:', adminError?.message || 'NONE')
     
     if (!adminUserData) {
       console.log('[Dashboard Page] ❌ USER NOT ADMIN - REDIRECTING TO LOGIN')
       redirect('/admin/login')
     }
   
-    const adminUser = adminUserData as any
+    const adminUser = adminUserData
     console.log('[Dashboard Page] ✓ User is admin, rendering dashboard')
 
     // Get counts for dashboard stats

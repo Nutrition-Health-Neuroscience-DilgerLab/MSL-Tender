@@ -10,7 +10,6 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const router = useRouter()
 
   useEffect(() => {
     const hash = window.location.hash
@@ -19,7 +18,10 @@ export default function AdminLogin() {
       const error = params.get('error')
       const errorDescription = params.get('error_description')
       console.error('Auth error from URL:', error, errorDescription)
-      setMessage(`Authentication error: ${errorDescription || error}`)
+      // Use setTimeout to avoid setState in effect body
+      setTimeout(() => {
+        setMessage(`Authentication error: ${errorDescription || error}`)
+      }, 0)
       window.history.replaceState(null, '', window.location.pathname)
     }
   }, [])

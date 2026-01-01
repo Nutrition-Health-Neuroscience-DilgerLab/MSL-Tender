@@ -12,10 +12,6 @@ type Sample = {
   ph: number | null
 }
 
-type SampleImage = {
-  image_url: string
-}
-
 export default async function SamplesPage() {
   const supabase = await createClient()
 
@@ -25,7 +21,7 @@ export default async function SamplesPage() {
     .select('id, study_number, standardized_chop_id, chop_color, chop_marbling, chop_firmness, ph')
     .order('study_number', { ascending: true })
     .order('standardized_chop_id', { ascending: true })
-    .limit(50) as { data: Sample[] | null, error: any }
+    .limit(50)
 
   if (error) {
     console.error('Error fetching samples:', error)

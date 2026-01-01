@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
               cookiesToSet.forEach(({ name, value, options }) => {
                 cookieStore.set(name, value, options)
               })
-            } catch (error) {
+            } catch {
               // In API route context, cookies() may not support setAll
               console.log('[API Auth] Note: in API route, using response.cookies instead')
             }
