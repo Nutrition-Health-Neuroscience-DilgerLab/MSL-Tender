@@ -75,7 +75,7 @@ export default function CreateExperimentPage() {
     }
     console.log('Fetched images:', images?.length, 'for', sampleIds.length, 'samples')
     if (images && images.length > 0) {
-      console.log('Sample image URL:', images[0].image_url)
+      console.log('Sample image URL:', (images as any)[0].image_url)
     }
 
     // Create image map
@@ -154,7 +154,6 @@ export default function CreateExperimentPage() {
       // Create experiment
       const { data: experiment, error: expError } = await supabase
         .from('experiments')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert({
           name: experimentName,
           description: description || null,
@@ -178,7 +177,6 @@ export default function CreateExperimentPage() {
 
       // Add samples to experiment
       const experimentSamples = Array.from(selectedSamples).map((sampleId, index) => ({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         experiment_id: (experiment as any).id,
         sample_id: sampleId,
         display_order: index,
@@ -187,7 +185,6 @@ export default function CreateExperimentPage() {
 
       const { error: samplesError } = await supabase
         .from('experiment_samples')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert(experimentSamples as any)
 
       if (samplesError) {
@@ -198,7 +195,6 @@ export default function CreateExperimentPage() {
       }
 
       // Success! Redirect to experiment details
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       router.push(`/admin/experiments/${(experiment as any).id}`)
     } catch (error) {
       console.error('Error:', error)
