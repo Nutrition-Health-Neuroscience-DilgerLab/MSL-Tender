@@ -6,6 +6,7 @@ import Image from 'next/image'
 interface CroppedImageProps {
   imageUrl: string
   imageId: number
+  processedUrl?: string | null
   alt: string
   cropCoords?: {
     x1: number
@@ -17,7 +18,7 @@ interface CroppedImageProps {
   sizes?: string
 }
 
-export default function CroppedImage({ imageUrl, imageId, alt, cropCoords, sizes }: CroppedImageProps) {
+export default function CroppedImage({ imageUrl, imageId, processedUrl, alt, cropCoords, sizes }: CroppedImageProps) {
   const [showFull, setShowFull] = useState(false)
   const [imageError, setImageError] = useState(false)
 
@@ -33,8 +34,8 @@ export default function CroppedImage({ imageUrl, imageId, alt, cropCoords, sizes
   const hasCropCoords = cropCoords && cropCoords.x1 !== 0 && cropCoords.x2 !== 0
   
   if (hasCropCoords && !showFull) {
-    // Use the crop API endpoint (it handles background removal internally)
-    const croppedUrl = `/api/crop-image?id=${imageId}`
+    // Use processed URL directly if available, otherwise fallback to API endpoint
+    const croppedUrl = processedUrl || `/api/crop-image?id=${imageId}`
     
     return (
       <div className="relative h-full w-full">

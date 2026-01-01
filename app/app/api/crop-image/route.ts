@@ -4,6 +4,7 @@ import { processChopImage } from '@/lib/chop-detection'
 
 type ImageData = {
   image_url: string
+  processed_image_url: string | null
   crop_x1: number
   crop_y1: number
   crop_x2: number
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     // Get image data from database
     const { data: image, error } = await supabase
       .from('sample_images')
-      .select('image_url, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence')
+      .select('image_url, processed_image_url, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence')
       .eq('id', id)
       .single<ImageData>()
 
@@ -33,11 +34,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 })
     }
 
-    if (!image.crop_x1 || !image.crop_x2) {
-      return NextResponse.json({ error: 'Image not processed' }, { status: 400 })
+    // If we have a processed image URL, redirect to it
+    if (image.processed_image_url) {
+      return NextResponse.redirect(image.processed_image_url)
     }
 
-    // Process the image with background removal
+    // Fallback: generate on-the-fly if not yet processed
+    if (!image.crop_x1 || !image.crop_x2) {
+      return NextResponse.json({ error: 'Image not processed yet' }, { status: 400 })
+    }
+
+    // Process the image with background removal (fallback)
     const processedBuffer = await processChopImage(image.image_url, {
       x1: image.crop_x1,
       y1: image.crop_y1,
@@ -50,7 +57,7 @@ export async function GET(request: Request) {
     return new NextResponse(processedBuffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': 'public, max-age=3600',
       },
     })
 

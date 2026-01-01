@@ -6,6 +6,7 @@ import Image from 'next/image'
 type ProcessedImage = {
   id: number
   image_url: string
+  processed_image_url: string | null
   sample_id: number
   crop_x1: number
   crop_y1: number
@@ -27,7 +28,7 @@ export default async function CropTestPage() {
   // Get all images that have been cropped
   const { data: images } = await supabase
     .from('sample_images')
-    .select('id, image_url, sample_id, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence, processed_at')
+    .select('id, image_url, processed_image_url, sample_id, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence, processed_at')
     .eq('crop_processed', true)
     .not('crop_x1', 'is', null)
     .order('processed_at', { ascending: false })
@@ -62,7 +63,8 @@ export default async function CropTestPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {images.map((image) => {
-              const croppedUrl = `/api/crop-image?id=${image.id}`
+              // Use processed URL directly if available, otherwise fallback to API endpoint
+              const croppedUrl = image.processed_image_url || `/api/crop-image?id=${image.id}`
               const confidence = Math.round((image.crop_confidence || 0) * 100)
               
               return (

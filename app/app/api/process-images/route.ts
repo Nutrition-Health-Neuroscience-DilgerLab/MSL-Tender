@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { detectChopBoundaries } from '@/lib/chop-detection'
+import { detectChopBoundaries, processChopImage } from '@/lib/chop-detection'
+import { uploadProcessedImage } from '@/lib/r2'
 
 interface ImageRecord {
   id: number
@@ -77,9 +78,39 @@ export async function POST(request: Request) {
     for (const imageRecord of imageRecords) {
       try {
         console.log(`[Process Images] Processing image ${imageRecord.id}: ${imageRecord.image_url}`)
+        
+        // Detect chop boundaries
         const coordinates = await detectChopBoundaries(imageRecord.image_url)
         
-        // Update sample_images with crop coordinates
+        if (coordinates.confidence === 0) {
+          console.warn(`[Process Images] No chop detected in image ${imageRecord.id}`)
+          results.push({
+            id: imageRecord.id,
+            image_url: imageRecord.image_url,
+            error: 'No chop detected'
+          })
+          continue
+        }
+        
+        // Process image (crop and remove background)
+        const processedBuffer = await processChopImage(imageRecord.image_url, coordinates)
+        
+        // Extract study number and filename from original URL
+        // URL format: https://...r2.dev/photos/20-04/image.jpg
+        const urlParts = imageRecord.image_url.split('/')
+        const studyNumber = urlParts[urlParts.length - 2]
+        const filename = urlParts[urlParts.length - 1]
+        
+        // Upload processed image to R2
+        const { url: processedUrl } = await uploadProcessedImage(
+          processedBuffer,
+          studyNumber,
+          filename
+        )
+        
+        console.log(`[Process Images] Uploaded processed image to ${processedUrl}`)
+        
+        // Update sample_images with crop coordinates and processed URL
         const { error: updateError } = await supabase
           .from('sample_images')
           // @ts-expect-error - Supabase types not updated yet for new columns
@@ -90,7 +121,8 @@ export async function POST(request: Request) {
             crop_y2: coordinates.y2,
             crop_confidence: coordinates.confidence,
             crop_processed: true,
-            processed_at: new Date().toISOString()
+            processed_at: new Date().toISOString(),
+            processed_image_url: processedUrl
           })
           .eq('id', imageRecord.id)
 
@@ -104,6 +136,7 @@ export async function POST(request: Request) {
         results.push({
           id: imageRecord.id,
           image_url: imageRecord.image_url,
+          processed_url: processedUrl,
           ...coordinates
         })
       } catch (error) {

@@ -33,6 +33,7 @@ type ExperimentSample = {
   }
   image_url?: string
   image_id?: number
+  processed_image_url?: string | null
   crop_coords?: {
     x1: number
     y1: number
@@ -88,7 +89,7 @@ export default async function ExperimentDetailsPage({
   const sampleIds = experimentSamples?.map((es: any) => es.sample_id) || []
   const { data: images } = await supabase
     .from('sample_images')
-    .select('id, sample_id, image_url, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence, crop_processed')
+    .select('id, sample_id, image_url, processed_image_url, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence, crop_processed')
     .in('sample_id', sampleIds)
 
   const imageMap = new Map(
@@ -97,6 +98,7 @@ export default async function ExperimentDetailsPage({
       {
         id: img.id,
         url: img.image_url,
+        processedUrl: img.processed_image_url,
         coords: img.crop_processed && img.crop_x1 !== null ? {
           x1: img.crop_x1,
           y1: img.crop_y1,
@@ -119,6 +121,7 @@ export default async function ExperimentDetailsPage({
       sample: Array.isArray(es.pork_samples) ? es.pork_samples[0] : es.pork_samples,
       image_url: imageData?.url,
       image_id: imageData?.id,
+      processed_image_url: imageData?.processedUrl,
       crop_coords: imageData?.coords
     }
   }) || []
@@ -340,6 +343,7 @@ export default async function ExperimentDetailsPage({
                           <CroppedImage
                             imageUrl={sample.image_url}
                             imageId={sample.image_id}
+                            processedUrl={sample.processed_image_url}
                             alt={sample.sample.standardized_chop_id}
                             cropCoords={sample.crop_coords}
                             sizes="(max-width: 768px) 50vw, 25vw"
