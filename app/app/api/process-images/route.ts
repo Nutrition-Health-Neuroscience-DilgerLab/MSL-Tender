@@ -9,7 +9,7 @@ interface ImageRecord {
   sample_id: number
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const supabase = await createClient()
 
@@ -19,12 +19,25 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if test mode
+    const url = new URL(request.url)
+    const isTestMode = url.searchParams.get('test') === 'true'
+    const limit = isTestMode ? 5 : 100
+
     // Get unprocessed images
-    const { data: images, error } = await supabase
+    let query = supabase
       .from('sample_images')
       .select('id, image_url, sample_id')
       .eq('crop_processed', false)
-      .limit(100) // Process in batches of 100
+      .limit(limit)
+    
+    // For test mode, randomize the selection
+    if (isTestMode) {
+      // Get random sample by ordering randomly (PostgreSQL-specific)
+      query = query.order('random()', { ascending: true })
+    }
+    
+    const { data: images, error } = await query
     
     if (error) throw error
 

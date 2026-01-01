@@ -6,6 +6,7 @@ export default function ProcessImagesButton() {
   const [processing, setProcessing] = useState(false)
   const [status, setStatus] = useState<{ total: number; processed: number; remaining: number } | null>(null)
   const [message, setMessage] = useState<string>('')
+  const [testMode, setTestMode] = useState(true)
 
   const fetchStatus = async () => {
     try {
@@ -24,7 +25,8 @@ export default function ProcessImagesButton() {
     setMessage('Cropping images...')
     
     try {
-      const response = await fetch('/api/process-images', { method: 'POST' })
+      const url = testMode ? '/api/process-images?test=true' : '/api/process-images'
+      const response = await fetch(url, { method: 'POST' })
       const result = await response.json()
       
       if (response.ok) {
@@ -58,12 +60,22 @@ export default function ProcessImagesButton() {
         </div>
       )}
 
+      <label className="flex items-center mb-3 text-sm text-gray-700 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={testMode}
+          onChange={(e) => setTestMode(e.target.checked)}
+          className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
+        />
+        <span>Test Mode (process only 5 random images)</span>
+      </label>
+
       <button
         onClick={processImages}
         disabled={processing || (status?.remaining === 0)}
         className="w-full px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {processing ? 'Cropping...' : 'Crop Images'}
+        {processing ? 'Cropping...' : testMode ? 'Test Crop (5 Images)' : 'Crop Images'}
       </button>
 
       {message && (
@@ -73,8 +85,9 @@ export default function ProcessImagesButton() {
       )}
 
       <p className="mt-3 text-xs text-gray-500">
-        Automatically detects and crops pork chop images for better display.
-        Processes in batches of 100.
+        {testMode 
+          ? 'Test mode will process 5 random unprocessed images to verify the algorithm.' 
+          : 'Automatically detects and crops pork chop images for better display. Processes in batches of 100.'}
       </p>
     </div>
   )
