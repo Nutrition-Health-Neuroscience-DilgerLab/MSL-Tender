@@ -32,7 +32,7 @@ export async function uploadProcessedImage(
   studyNumber: string | number,
   filename: string
 ): Promise<UploadResult> {
-  const key = `photos/processed/${studyNumber}/${filename}`;
+  const key = `processed/${studyNumber}/${filename}`;
   
   console.log(`[R2] Uploading to key: ${key}, size: ${buffer.length} bytes`);
   
