@@ -25,24 +25,16 @@ export async function POST(request: Request) {
     // Check if test mode
     const url = new URL(request.url)
     const isTestMode = url.searchParams.get('test') === 'true'
-    const limit = isTestMode ? 5 : 100
-    console.log('[Process Images] Test mode:', isTestMode, 'Limit:', limit)
+    const fetchLimit = isTestMode ? 20 : 100 // Fetch more for random selection in test mode
+    console.log('[Process Images] Test mode:', isTestMode, 'Fetch limit:', fetchLimit)
 
     // Get unprocessed images
-    let query = supabase
+    const { data: images, error } = await supabase
       .from('sample_images')
       .select('id, image_url, sample_id')
       .eq('crop_processed', false)
-      .limit(limit)
+      .limit(fetchLimit)
     
-    // For test mode, randomize the selection
-    if (isTestMode) {
-      // Get random sample by ordering randomly (PostgreSQL-specific)
-      query = query.order('random()', { ascending: true })
-    }
-    
-    console.log('[Process Images] Executing database query')
-    const { data: images, error } = await query
     console.log('[Process Images] Query result:', images?.length, 'images found')
     
     if (error) throw error
@@ -54,8 +46,30 @@ export async function POST(request: Request) {
       })
     }
 
+    // For test mode, randomly select 5 images from the results
+    let selectedImages = images
+    if (isTestMode && images.length > 5) {
+      // Fisher-Yates shuffle and take first 5
+      const shuffled = [...images]
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      }
+      selectedImages = shuffled.slice(0, 5)
+      console.log('[Process Images] Randomly selected 5 images from', images.length)
+    }
+    
+    if (error) throw error
+
+    if (!images || images.length === 0) {
+      return NextResponse.json({ 
+        message: 'No unprocessed images found',
+        processed: 0 
+      })
+    }
+
     // Extract image URLs
-    const imageRecords = images as ImageRecord[]
+    const imageRecords = selectedImages as ImageRecord[]
     const imageUrls = imageRecords.map(img => img.image_url)
 
     // Call Python script - handle both local and Vercel paths
