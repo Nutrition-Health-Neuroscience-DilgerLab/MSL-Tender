@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
-import Image from 'next/image'
+import CroppedImage from './CroppedImage'
 
 type Experiment = {
   id: string
@@ -32,6 +32,14 @@ type ExperimentSample = {
     chop_marbling: number | null
   }
   image_url?: string
+  image_id?: number
+  crop_coords?: {
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+    confidence: number
+  } | null
 }
 
 export default async function ExperimentDetailsPage({
@@ -76,26 +84,44 @@ export default async function ExperimentDetailsPage({
     .eq('experiment_id', id)
     .order('sample_order', { ascending: true })
 
-  // Get images for samples
+  // Get images for samples with crop coordinates
   const sampleIds = experimentSamples?.map((es: any) => es.sample_id) || []
   const { data: images } = await supabase
     .from('sample_images')
-    .select('sample_id, image_url')
+    .select('id, sample_id, image_url, crop_x1, crop_y1, crop_x2, crop_y2, crop_confidence, crop_processed')
     .in('sample_id', sampleIds)
 
   const imageMap = new Map(
-    images?.map((img: any) => [img.sample_id, img.image_url]) || []
+    images?.map((img: any) => [
+      img.sample_id, 
+      {
+        id: img.id,
+        url: img.image_url,
+        coords: img.crop_processed && img.crop_x1 !== null ? {
+          x1: img.crop_x1,
+          y1: img.crop_y1,
+          x2: img.crop_x2,
+          y2: img.crop_y2,
+          confidence: img.crop_confidence || 0
+        } : null
+      }
+    ]) || []
   )
 
   // Transform the data
-  const samplesWithImages: ExperimentSample[] = experimentSamples?.map((es: any) => ({
-    id: es.id,
-    sample_id: es.sample_id,
-    display_order: es.sample_order,
-    set_number: Math.floor((es.sample_order || 0) / 4),
-    sample: Array.isArray(es.pork_samples) ? es.pork_samples[0] : es.pork_samples,
-    image_url: imageMap.get(es.sample_id)
-  })) || []
+  const samplesWithImages: ExperimentSample[] = experimentSamples?.map((es: any) => {
+    const imageData = imageMap.get(es.sample_id)
+    return {
+      id: es.id,
+      sample_id: es.sample_id,
+      display_order: es.sample_order,
+      set_number: Math.floor((es.sample_order || 0) / 4),
+      sample: Array.isArray(es.pork_samples) ? es.pork_samples[0] : es.pork_samples,
+      image_url: imageData?.url,
+      image_id: imageData?.id,
+      crop_coords: imageData?.coords
+    }
+  }) || []
 
   // Get response count
   const { count: responseCount } = await supabase
@@ -310,12 +336,12 @@ export default async function ExperimentDetailsPage({
                   {setsamples.map((sample) => (
                     <div key={sample.id} className="border border-gray-200 rounded-lg overflow-hidden">
                       <div className="aspect-square bg-gray-100 relative">
-                        {sample.image_url ? (
-                          <Image
-                            src={sample.image_url}
+                        {sample.image_url && sample.image_id ? (
+                          <CroppedImage
+                            imageUrl={sample.image_url}
+                            imageId={sample.image_id}
                             alt={sample.sample.standardized_chop_id}
-                            fill
-                            className="object-cover"
+                            cropCoords={sample.crop_coords}
                             sizes="(max-width: 768px) 50vw, 25vw"
                           />
                         ) : (
