@@ -162,12 +162,23 @@ export async function POST(request: Request) {
     console.error('[Process Images] CATCH BLOCK - Error constructor:', error?.constructor?.name)
     console.error('[Process Images] CATCH BLOCK - Is Error instance:', error instanceof Error)
     console.error('[Process Images] CATCH BLOCK - Error:', error)
+    console.error('[Process Images] CATCH BLOCK - Error stringified:', JSON.stringify(error, null, 2))
     console.error('[Process Images] CATCH BLOCK - Error message:', error instanceof Error ? error.message : String(error))
     console.error('[Process Images] CATCH BLOCK - Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     
+    // Handle object errors (like from Supabase or spawn)
+    let errorDetails = 'Unknown error'
+    if (error instanceof Error) {
+      errorDetails = error.message
+    } else if (typeof error === 'object' && error !== null) {
+      errorDetails = JSON.stringify(error, null, 2)
+    } else {
+      errorDetails = String(error)
+    }
+    
     return NextResponse.json({ 
       error: 'Failed to process images',
-      details: error instanceof Error ? error.message : String(error),
+      details: errorDetails,
       errorType: error?.constructor?.name || typeof error,
       stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 })
