@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { detectChopBoundaries } from '@/lib/chop-detection'
 
 interface ImageRecord {
   id: number
@@ -68,113 +69,67 @@ export async function POST(request: Request) {
 
     // Extract image URLs
     const imageRecords = selectedImages as ImageRecord[]
-    const imageUrls = imageRecords.map(img => img.image_url)
+    console.log('[Process Images] Processing', imageRecords.length, 'images')
 
-    // Call Python API endpoint (Vercel Python function)
-    console.log('[Process Images] Calling Python API with', imageUrls.length, 'URLs')
-    
-    // Build full URL for Python API
-    const protocol = request.headers.get('x-forwarded-proto') || 'https'
-    const host = request.headers.get('host') || 'localhost:3000'
-    const pythonApiUrl = `${protocol}://${host}/api/crop-detect`
-    console.log('[Process Images] Python API URL:', pythonApiUrl)
-    
-    // Forward authentication headers to Python API
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    }
-    
-    // Forward cookies for Vercel protection bypass
-    const cookieHeader = request.headers.get('cookie')
-    if (cookieHeader) {
-      headers['cookie'] = cookieHeader
-    }
-    
-    const pythonResponse = await fetch(pythonApiUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ urls: imageUrls })
-    })
-
-    console.log('[Process Images] Python API response status:', pythonResponse.status)
-    console.log('[Process Images] Python API response headers:', Object.fromEntries(pythonResponse.headers.entries()))
-
-    if (!pythonResponse.ok) {
-      const errorText = await pythonResponse.text()
-      console.error('[Process Images] Python API error:', errorText)
-      console.error('[Process Images] Python API status:', pythonResponse.status)
-      console.error('[Process Images] Python API status text:', pythonResponse.statusText)
-      return NextResponse.json({
-        error: 'Python processing failed',
-        details: errorText || `HTTP ${pythonResponse.status}: ${pythonResponse.statusText}`,
-        status: pythonResponse.status
-      }, { status: 500 })
-    }
-
-    const results = await pythonResponse.json()
-    console.log('[Process Images] Python API returned', results.length, 'results')
-
-    // Update database with results
-    const updates = []
+    // Process images using Node.js detection
+    const results = []
     let successCount = 0
 
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i]
-      const imageRecord = imageRecords[i]
-
-      if (result.error) {
-        console.error(`Failed to process ${result.image_url}: ${result.error}`)
-        continue
-      }
-
-      // Update sample_images with crop coordinates
-      updates.push(
-        supabase
+    for (const imageRecord of imageRecords) {
+      try {
+        console.log(`[Process Images] Processing image ${imageRecord.id}: ${imageRecord.image_url}`)
+        const coordinates = await detectChopBoundaries(imageRecord.image_url)
+        
+        // Update sample_images with crop coordinates
+        const { error: updateError } = await supabase
           .from('sample_images')
           // @ts-expect-error - Supabase types not updated yet for new columns
           .update({
-            crop_x1: result.x1,
-            crop_y1: result.y1,
-            crop_x2: result.x2,
-            crop_y2: result.y2,
-            crop_confidence: result.confidence,
+            crop_x1: coordinates.x1,
+            crop_y1: coordinates.y1,
+            crop_x2: coordinates.x2,
+            crop_y2: coordinates.y2,
+            crop_confidence: coordinates.confidence,
             crop_processed: true,
             processed_at: new Date().toISOString()
           })
           .eq('id', imageRecord.id)
-      )
 
-      successCount++
+        if (updateError) {
+          console.error(`Failed to update image ${imageRecord.id}:`, updateError)
+        } else {
+          successCount++
+          console.log(`[Process Images] Successfully processed image ${imageRecord.id}`)
+        }
+
+        results.push({
+          id: imageRecord.id,
+          image_url: imageRecord.image_url,
+          ...coordinates
+        })
+      } catch (error) {
+        console.error(`Error processing image ${imageRecord.id}:`, error)
+        results.push({
+          id: imageRecord.id,
+          image_url: imageRecord.image_url,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
     }
 
-    // Execute all updates
-    await Promise.all(updates)
+    console.log('[Process Images] Completed:', successCount, 'out of', imageRecords.length)
 
     return NextResponse.json({
-      message: 'Image processing completed',
+      message: `Successfully processed ${successCount} of ${imageRecords.length} images`,
       total: imageRecords.length,
       processed: successCount,
-      failed: imageRecords.length - successCount
+      failed: imageRecords.length - successCount,
+      results
     })
 
   } catch (error) {
-    console.error('[Process Images] CATCH BLOCK - Error type:', typeof error)
-    console.error('[Process Images] CATCH BLOCK - Error constructor:', error?.constructor?.name)
-    console.error('[Process Images] CATCH BLOCK - Is Error instance:', error instanceof Error)
-    console.error('[Process Images] CATCH BLOCK - Error:', error)
-    console.error('[Process Images] CATCH BLOCK - Error stringified:', JSON.stringify(error, null, 2))
-    console.error('[Process Images] CATCH BLOCK - Error message:', error instanceof Error ? error.message : String(error))
-    console.error('[Process Images] CATCH BLOCK - Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    
-    // Handle object errors (like from Supabase or spawn)
-    let errorDetails = 'Unknown error'
-    if (error instanceof Error) {
-      errorDetails = error.message
-    } else if (typeof error === 'object' && error !== null) {
-      errorDetails = JSON.stringify(error, null, 2)
-    } else {
-      errorDetails = String(error)
-    }
+    console.error('[Process Images] Error:', error)
+    const errorDetails = error instanceof Error ? error.message : String(error)
     
     return NextResponse.json({ 
       error: 'Failed to process images',
