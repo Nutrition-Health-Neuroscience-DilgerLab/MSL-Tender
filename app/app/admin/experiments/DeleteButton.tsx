@@ -43,9 +43,9 @@ export default function DeleteButton({ experimentId, experimentName }: { experim
       {showConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Experiment</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Are you sure you want to delete &quot;{experimentName}&quot;? This action cannot be undone.
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Experiment</h3>
+            <p className="text-gray-900 mb-6">
+              Are you sure you want to delete <strong>&quot;{experimentName}&quot;</strong>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
