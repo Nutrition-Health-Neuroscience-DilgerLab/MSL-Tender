@@ -45,11 +45,12 @@ export async function detectChopBoundaries(imageUrl: string): Promise<CropCoordi
         const g = data[idx + 1];
         const b = data[idx + 2];
         
-        // Detect blue background: ultra aggressive detection
-        // Catch all shades of blue including very light/dark variants
+        // Detect blue background: must be clearly blue
+        // Blue must dominate both red AND green to avoid catching meat colors
         const isBlueBackground = 
-          b > 70 &&                       // Blue channel (lowered from 80)
-          (b >= r || b >= g);            // Blue at least equal to red OR green
+          b > 85 &&                       // Blue channel (raised from 70)
+          b > r + 10 &&                   // Blue clearly more than red
+          b > g + 10;                     // Blue clearly more than green
         
         // Keep everything that's NOT blue background
         // This includes meat, fat, marbling, and paper tag (we'll filter tag by size)
@@ -218,8 +219,9 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
       
       // Same blue background detection as in detectChopBoundaries
       const isBlueBackground = 
-        b > 70 &&
-        (b >= r || b >= g);
+        b > 85 &&
+        b > r + 10 &&
+        b > g + 10;
       
       // Keep everything that's NOT blue background
       if (!isBlueBackground) {
@@ -289,9 +291,9 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
   }
   
   // Dilate the largest component to reclaim edge pixels
-  // This helps remove remaining blue pixels at the boundaries
+  // Use moderate dilation to avoid removing internal chop structure
   const dilated = new Uint8Array(width * height);
-  const dilateKernel = 20; // Increased from 15 for ultra aggressive edge removal
+  const dilateKernel = 12; // Reduced from 20 to avoid over-expansion
   const dilateRadius = Math.floor(dilateKernel / 2);
   
   for (let y = 0; y < height; y++) {
@@ -311,7 +313,30 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
     }
   }
   
-  // Create alpha channel - use dilated mask
+  // Additionally, only replace pixels that are NOT meat-colored
+  // This prevents removing internal chop components
+  const finalMask = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      
+      // Check if this pixel is blue background
+      const isBlue = b > 85 && b > r + 10 && b > g + 10;
+      
+      // Include pixel if: in dilated mask AND not blue background
+      // OR if it's inside the original chop component (preserve interior)
+      if (dilated[y * width + x] === 1 && !isBlue) {
+        finalMask[y * width + x] = 1;
+      } else if (labels[y * width + x] === largestLabel) {
+        finalMask[y * width + x] = 1;
+      }
+    }
+  }
+  
+  // Create alpha channel - use final mask
   const outputData = Buffer.alloc(width * height * 4);
   
   for (let y = 0; y < height; y++) {
@@ -321,8 +346,8 @@ export async function processChopImage(imageUrl: string, coords: CropCoordinates
       const g = data[idx + 1];
       const b = data[idx + 2];
       
-      // Show pixels that belong to the dilated chop mask
-      if (dilated[y * width + x] === 1) {
+      // Show pixels that belong to the final chop mask
+      if (finalMask[y * width + x] === 1) {
         outputData[idx] = r;
         outputData[idx + 1] = g;
         outputData[idx + 2] = b;
