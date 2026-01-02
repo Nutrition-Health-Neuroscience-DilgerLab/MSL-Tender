@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the needs_manual_review flag
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await supabase
       .from('sample_images')
       .update({ needs_manual_review: needsReview } as any)
