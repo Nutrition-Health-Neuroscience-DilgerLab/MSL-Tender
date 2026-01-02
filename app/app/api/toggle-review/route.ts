@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // Update the needs_manual_review flag
     const { data, error } = await supabase
       .from('sample_images')
-      .update({ needs_manual_review: needsReview })
+      .update({ needs_manual_review: needsReview } as any)
       .eq('id', imageId)
       .select('id, needs_manual_review')
       .single()
